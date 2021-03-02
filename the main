@@ -1,0 +1,128 @@
+import itchat
+import requests
+import json
+import jieba
+from bs4 import BeautifulSoup
+alluniv = []
+def gethemltext(url):
+    try :
+        r = requests.get(url,timeout = 30)
+        r.raise_for_status()
+        r.encoding = 'utf-8'
+        return r.text
+    except :
+        return ""
+
+
+def fillunivlist(soup):
+    data = soup.find_all('tr')
+    for tr in data:
+        ltd = tr.find_all('td')
+        if len(ltd) == 0:
+            continue
+        singleuniv = []
+        for td in ltd:
+            singleuniv.append(td.string)
+        alluniv.append(singleuniv)
+
+
+def printunivlist(num):
+    print("{:^4}{:^10}{:^5}{:^8}{:^10}".format("排名","学校名称","省份","总分","培养规模"))
+    for i in range(num):
+        u = alluniv[i]
+        print("{:^4}{:^10}{:^5}{:^8}{:^10}".format(u[0],u[1],u[2],u[3],u[6]))
+
+
+def main(num):
+    url = 'http://www.zuihaodaxue.cn/zuihaodaxuepaiming2018.html'
+    html = gethemltext(url)
+    soup = BeautifulSoup(html,"html.parser")
+    fillunivlist(soup)
+
+
+def chazhao(name):
+    for m in alluniv:
+        if m[1] == name:
+            s = "排名：{}，学校名称：{}，省市：{}，指标得分：{}，生源质量（新生高考成绩得分）：{}，" \
+                "培养结果（毕业生就业率）：{}，科研规模（论文数量·篇）：{}，顶尖成果（高被引论文·篇）：{}，" \
+                "顶尖人才（高被引学者·人）：{}，科技服务（企业科研经费·千元）：{}，" \
+                "产学研合作（校企合作论文·篇）：{}，成果转化（技术转让收入·千元)：{}".format(m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8],m[9],m[10],m[11])
+            print(s)
+            return s
+
+
+main(600)
+univname = []#所有学校的名字
+for m in alluniv:
+        univname.append(m[1])
+
+
+def get_response(msg):
+    api = 'http://openapi.tuling123.com/openapi/api/v2'
+    dat = {
+        "perception": {
+            "inputText": {
+                "text": msg
+            },
+            "inputImage": {
+                "url": "imageUrl"
+            },
+            "selfInfo": {
+                "location": {
+                    "city": "长沙",
+                    "province": "湖南",
+                    "street": "湖南农业大学"
+                }
+            }
+        },
+        "userInfo":
+            {
+            "apiKey": '52b8d9766fba49c0b04619498bd6a09e',
+            "userId" : "fool"
+        }
+    }
+    dat = json.dumps(dat)
+    r = requests.post(api, data=dat).json()
+
+    # 以下为r的内容
+    # {'emotion': {'userEmotion': {'emotionId': 10300, 'd': 0, 'p': 0, 'a': 0},
+    #              'robotEmotion': {'emotionId': 0, 'd': 0, 'p': 0, 'a': 0}},
+    #  'intent': {'code': 10004, 'actionName': '', 'intentName': ''},
+    # 'results': [{'resultType': 'text', 'values': {'text': '别兴奋别兴奋，很高兴认识你！'}, 'groupType': 1}]}
+
+    message = r['results'][0]['values']['text']
+    messagecut = jieba.lcut(message)
+    output = ""
+    j = 0
+    for i in messagecut:
+        if i == "图灵机器人"or i == "图灵":
+            i = "子轩"
+            output=output+i
+            j+=1
+        output=output+i
+        j+=1
+    print(output)
+    return output
+
+
+itchat.auto_login(hotReload=True)
+
+
+@itchat.msg_register('Text')
+def text_reply(msg):
+    default = msg['Text']
+    if default in univname:
+        reply = chazhao(default)
+        return reply
+    else :
+        reply = get_response(default)
+        return reply
+
+
+@itchat.msg_register('File')
+def text_reply(msg):
+    if msg['File'] == "你好":
+        return 'hello'
+
+
+itchat.run()  # 监听特定
